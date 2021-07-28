@@ -1,0 +1,212 @@
+---
+title: "Probability of Loan"
+author: "Dionisius Widjayanto"
+date: "7/20/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r out.width="100%", fig.align='center', echo=FALSE}
+knitr::include_graphics("loan-bank.jpg")
+```
+
+## 1. Explanation
+
+# About Loan Data
+
+This data set is about loan data from LendingClub.com that publish for comercial in Kaggle.
+LendingClub.com is platform that connect people who need money (borrower) and who have money (investor). As an investor, we need to manage our risk. That's why our priority is to determine good criteria that have high probility of paying us back. Other that we can find another criteria for borrower that we avoid.
+
+# Data Column
+Data set contain :
+credit.policy: 1 if the customer meets the credit underwriting criteria of LendingClub.com, and 0 otherwise.
+
+purpose: The purpose of the loan (takes values "creditcard", "debtconsolidation", "educational", "majorpurchase", "smallbusiness", and "all_other").
+
+int.rate: The interest rate of the loan, as a proportion (**a rate of 11% would be stored as 0.11**). Borrowers judged by LendingClub.com to be more risky are assigned higher interest rates.
+
+installment: The monthly installments owed by the borrower if the loan is funded.
+
+log.annual.inc: The natural log of the self-reported annual income of the borrower.
+
+dti: The debt-to-income ratio of the borrower (amount of debt divided by annual income).
+
+fico: The FICO credit score of the borrower.
+
+days.with.cr.line: The number of days the borrower has had a credit line.
+
+revol.bal: The borrower's revolving balance (amount unpaid at the end of the credit card billing cycle).
+
+revol.util: The borrower's revolving line utilization rate (the amount of the credit line used relative to total credit available).
+
+inq.last.6mths: The borrower's number of inquiries by creditors in the last 6 months.
+
+delinq.2yrs: The number of times the borrower had been 30+ days past due on a payment in the past 2 years.
+
+pub.rec: The borrower's number of derogatory public records (bankruptcy filings, tax liens, or judgments).
+
+not.fully.paid : The borrower can't paid their loan.
+
+## 2. Open and Checking Data
+```{r}
+loan <- read.csv("loan_data.csv")
+head(loan)
+```
+```{r}
+anyNA(loan)
+```
+not find missing value before cleansing
+
+# Cleansing Data
+
+Checking the data type's
+```{r}
+str(loan)
+```
+Loan data contain 9578 row
+
+# Change
+credit.policy, pupose, inq.last.6mths, delinq.2yrs, pub.rec, and not.fully.paid  as factor
+
+```{r}
+loan[,c("credit.policy", "purpose", "inq.last.6mths", "delinq.2yrs", "pub.rec", "not.fully.paid")] <- lapply(loan[,c("credit.policy", "purpose", "inq.last.6mths", "delinq.2yrs", "pub.rec", "not.fully.paid")], as.factor)
+str(loan)
+```
+```{r}
+anyNA(loan)
+```
+Not find missing value after cleansing
+
+```{r}
+head(loan)
+```
+## 3. Data Explanation
+We can read the summary of loan data
+```{r}
+summary(loan)
+```
+Summary :
+
+1.From 9578 borrower, 7710 borrower had approval for criteria policy from LendingClub.com
+
+2.The most purpose of loan from borrower is debt consolidation
+
+3.The intrest rate is between 0.06 (the lower risk) and 0.2164 (the highest risk)
+
+4.Lowest installment is 15.67 and the highest installment is 940.14
+
+5.Debt devide by annual income mean is 12.607 point
+
+6.Fico score mean is 710.8
+
+7.The borrower days line's to pay their loan is ussually between 2820 - 5730 days (Q1-Q3)
+
+8.The borrower's remaining payment ussually between 3187-18250
+
+9.Some of borrower use more than available total credit amount more than 100 %
+
+10.Many borrower never late paying installment
+
+11.Many borrower have a good record (dont have public derogatory records)
+
+12.From 9578 borrower, 8045 fully paid their loan
+
+## 4. Data Manipulation
+
+From this summary we want to determine our criteria for borrower.
+
+1.We want use borrower that have credit policy from LendingClub.com.
+
+2.Our borrower must fully piad their last loan
+
+3.Never late paying their installment (before 31 days)
+
+4.Never have a derogatory public records (bankruptcy filings, tax liens, or judgments).
+
+```{r}
+loan_good <- loan[loan$credit.policy == 1 & loan$not.fully.paid == 0 & loan$delinq.2yrs == 0 & loan$pub.rec %in% 0,]
+head(loan_good)
+```
+```{r}
+dim(loan_good)
+```
+
+```{r}
+table(loan_good$purpose)
+```
+Back to the column interest rate of the loan says **Borrowers judged by LendingClub.com to be more risky are assigned higher interest rates**.
+Question :
+*How much the median of interest rate of the loan?* (we want to know it because at that point we have many borrower (50%) type with low risk)
+```{r}
+quantile(loan_good$int.rate)
+```
+
+**Half of all borrower have good credit policy is in under mean (50%) int.rate = 0.1166.** 
+So we still have many option and have a low risk.
+```{r}
+boxplot(loan_good$fico)
+```
+
+```{r}
+loan_g_r <- loan_good[loan_good$int.rate <= 0.1166,]
+dim(loan_g_r)
+```
+some source says that a good fico score is more than 740.
+Question : 
+*1. How much the range of Fico point?*
+*2. That We have a good Fico point on borrower group that good policy criteri from LendingClub.com and have low interest rate of the loan?*
+```{r}
+quantile(loan_g_r$fico)
+```
+Answer :
+**1. Range for this group is 662-827. half of them have a good fico score (>740)**
+**2. A half of this group have a good Fico point (more than 740) and the median is 747**
+
+To make sure this answer we want to see how the borrower finished their loan or installment on their days credit line.
+```{r}
+plot(loan_g_r$revol.bal, loan_g_r$days.with.cr.line)
+```
+**At this group we know that many borrower have finished to pay their loan before their days credit line done.** 
+
+```{r}
+boxplot(loan_g_r$installment)
+```
+```{r}
+quantile(loan_g_r$installment)
+```
+```{r}
+Max_box = 347.72 + ((347.72 - 155.38)*1.5)
+Max_box
+```
+As an Investor, we want to get high return from our invest. So we will see group of borrower that have high installments  (more the max boxplot)
+```{r}
+loan_g_i <- loan_g_r[loan_g_r$installment >= Max_box,]
+head(loan_g_i)
+```
+```{r}
+plot(loan_g_i$revol.bal, loan_g_i$days.with.cr.line)
+```
+From this plot we can know that with high installment, most of them can paid fully their loan (revol.bal point at 0). This borrower group have a good financial.
+
+*Who is the most purpose at that group and how much they have the unpaid loan?*
+```{r}
+xtabs(revol.bal ~ purpose, loan_g_i)
+```
+```{r}
+table(loan_g_i$purpose)
+```
+**The highest total unpaid loan and purpose is from debt consolidation.**
+
+
+```{r}
+aggregate(fico ~ purpose, loan_g_i, FUN = mean)
+```
+
+## 5. Summary
+From loan data set from LendingClub.com, most of the borrower in this website have a good record. We know the good record from approval credit policy by LendingClub.com and dont have deragotary record. At this point we want small group with a good criteria to be borrower to help investor to decide their invest in this website. After we determine variable from data set, we can get some criteria for good borrower.
+
+- Fico score minimal at 662, better if the borrower have 747 fico score (median of good borrorwer's group)
+- Interest rate of loan's score less than 0.1166 still have many option and we can use that score for investor standard
+- At that dico socre and interest rate of loan's score standard we still have many option in debt consolidation, home improvment, and credit card purpose.
